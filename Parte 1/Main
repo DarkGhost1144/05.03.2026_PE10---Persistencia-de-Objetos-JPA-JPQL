@@ -1,0 +1,418 @@
+/**
+ * Clase principal que gestiona la flota de vehiculos usando ObjectDB.
+ *
+ * @author JKur
+ * @version 1.0
+ * @see List
+ * @see Vehiculo
+ * @see VehiculoException
+ * @see ArrayList
+ */
+public class Main {
+
+    /**
+     * Método principal que inicia la aplicación y muestra el menú interactivo.
+     *
+     * * @param args Argumentos de la línea de comandos (no utilizados).
+     */
+    public static void main(String[] args) {
+        // Inicializamos el escáner para leer la entrada del usuario por consola
+        Scanner sc = new Scanner(System.in);
+
+        // Creamos la factoría de EntityManagers apuntando a nuestro archivo de base de datos ObjectDB
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("$objectdb/db/vehiculo.odb");
+        // Creamos el EntityManager que gestionará las operaciones CRUD
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            int opcion = -1;
+
+            // Bucle principal del menú que se ejecuta hasta que el usuario elija salir (opción 0)
+            do {
+                System.out.println("\n--- MENU FLOTA DE VEHICULOS ---");
+                System.out.println("1. Dar de alta un Vehiculo");
+                System.out.println("2. Listar todos los vehiculos");
+                System.out.println("3. Obtener informacion de un vehiculo (por matricula)");
+                System.out.println("4. Actualizar informacion de un vehiculo");
+                System.out.println("5. Eliminar un vehiculo (por matricula)");
+                System.out.println("6. Conocer el numero total de vehiculos");
+                System.out.println("7. Listar vehiculos de una marca");
+                System.out.println("8. Listar vehiculos por numero de plazas");
+                System.out.println("9. Listar vehiculos por extra");
+                System.out.println("10. Eliminar toda la base de datos");
+                System.out.println("0. Salir");
+                System.out.print("Elige una opcion: ");
+
+                try {
+                    // Leemos la opción como String y la parseamos a entero para evitar problemas de saltos de línea
+                    opcion = Integer.parseInt(sc.nextLine());
+                } catch (NumberFormatException e) {
+                    System.out.println("Error: Debes introducir un numero entero.");
+                    continue; // Volvemos al inicio del bucle si la entrada no es válida
+                }
+
+                // Evaluamos la opción seleccionada y llamamos al método correspondiente
+                switch (opcion) {
+                    case 1: // Alta
+                        altaVehiculo(sc, em);
+                        break;
+                    case 2: // Listar todos
+                        listarTodos(em);
+                        break;
+                    case 3: // Buscar por matricula
+                        buscarPorMatricula(sc, em);
+                        break;
+                    case 4: // Actualizar
+                        actualizarVehiculo(sc, em);
+                        break;
+                    case 5: // Eliminar uno
+                        eliminarVehiculo(sc, em);
+                        break;
+                    case 6: // Contar
+                        contarVehiculos(em);
+                        break;
+                    case 7: // Listar por marca
+                        listarPorMarca(sc, em);
+                        break;
+                    case 8: // Listar por plazas
+                        listarPorPlazas(sc, em);
+                        break;
+                    case 9: // Listar por extra
+                        listarPorExtra(sc, em);
+                        break;
+                    case 10: // Eliminar todo
+                        eliminarTodo(sc, em);
+                        break;
+                    case 0: // Salir
+                        System.out.println("Saliendo de la aplicacion. Hasta pronto.");
+                        break;
+                    default:
+                        System.out.println("Opcion incorrecta. Intentalo de nuevo.");
+                }
+
+            } while (opcion != 0);
+
+            // Cerramos las conexiones a la base de datos al finalizar
+            em.close();
+            emf.close();
+
+        } catch (Exception e) {
+            // Capturamos cualquier excepción no prevista para evitar cierres abruptos
+            System.out.println("Error critico en la aplicacion: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Opcion 1: Solicita los datos por consola e inserta un nuevo vehículo en
+     * la base de datos.
+     *
+     * @param em EntityManager para interactuar con la base de datos.
+     */
+    private static void altaVehiculo(Scanner sc, EntityManager em) {
+        try {
+            System.out.print("Matricula (DDDD-LLL): ");
+            String mat = sc.nextLine();
+
+            // Comprobar si ya existe un vehículo con esa clave primaria
+            if (em.find(Vehiculo.class, mat.toUpperCase()) != null) {
+                System.out.println("Error: Ya existe un vehiculo con esa matricula.");
+                return; // Salimos del método si hay duplicado
+            }
+
+            // Recopilación del resto de datos
+            System.out.print("Marca: ");
+            String marca = sc.nextLine();
+
+            System.out.print("Modelo: ");
+            String modelo = sc.nextLine();
+
+            System.out.print("Numero de plazas: ");
+            int plazas = Integer.parseInt(sc.nextLine());
+
+            System.out.print("Extras (separados por coma): ");
+            String extrasInput = sc.nextLine();
+            ArrayList<String> listaExtras = parsearExtras(extrasInput);
+
+            // Crear objeto Vehiculo (las validaciones internas pueden lanzar IllegalArgumentException)
+            Vehiculo v = new Vehiculo(mat, marca, modelo, plazas, listaExtras);
+
+            // Iniciamos la transacción para guardar en BD
+            em.getTransaction().begin();
+            em.persist(v); // Insertamos el objeto
+            em.getTransaction().commit(); // Confirmamos los cambios
+
+            System.out.println("Vehiculo guardado correctamente.");
+
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error en los datos introducidos: " + e.getMessage());
+        } catch (Exception e) {
+            System.out.println("Error inesperado: " + e.getMessage());
+            // Si hay un error, deshacemos la transacción para mantener la consistencia
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+        }
+    }
+
+    /**
+     * Opcion 2: Recupera y muestra por consola todos los vehículos registrados.
+     *
+     * * @param em EntityManager para interactuar con la base de datos.
+     */
+    private static void listarTodos(EntityManager em) {
+        TypedQuery<Vehiculo> query = em.createQuery("SELECT v FROM Vehiculo v", Vehiculo.class);
+        List<Vehiculo> lista = query.getResultList();
+
+        // Comprobamos si la lista está vacía
+        if (lista.isEmpty()) {
+            System.out.println("No hay vehiculos en la base de datos.");
+        } else {
+            // Iteramos e imprimimos cada vehículo
+            for (Vehiculo v : lista) {
+                System.out.println(v.toString());
+            }
+        }
+    }
+
+    /**
+     * Opcion 3: Busca un vehículo específico usando su matrícula (clave
+     * primaria).
+     *
+     * @param em EntityManager para buscar en la base de datos.
+     */
+    private static void buscarPorMatricula(Scanner sc, EntityManager em) {
+        System.out.print("Introduce la matricula a buscar: ");
+        String mat = sc.nextLine().toUpperCase();
+
+        // El método find busca directamente por la clave primaria
+        Vehiculo v = em.find(Vehiculo.class, mat);
+
+        if (v != null) {
+            System.out.println(v.toString());
+        } else {
+            System.out.println("No se encontro ningun vehiculo con esa matricula.");
+        }
+    }
+
+    /**
+     * Opcion 4: Permite actualizar los datos de un vehículo existente. Si el
+     * usuario deja un campo en blanco, se conserva el valor actual.
+     *
+     * * @param sc Objeto Scanner para leer los nuevos datos.
+     * @param em EntityManager para buscar y actualizar la base de datos.
+     */
+    private static void actualizarVehiculo(Scanner sc, EntityManager em) {
+        System.out.print("Introduce la matricula del vehiculo a actualizar: ");
+        String mat = sc.nextLine().toUpperCase();
+
+        // Buscamos el vehículo a modificar
+        Vehiculo v = em.find(Vehiculo.class, mat);
+        if (v == null) {
+            System.out.println("No se encontro ningun vehiculo con esa matricula.");
+            return; // Salimos si no existe
+        }
+
+        try {
+            // Iniciamos transacción ya que vamos a modificar datos persistidos
+            em.getTransaction().begin();
+
+            System.out.print("Nueva marca (deja en blanco para no cambiar): ");
+            String marca = sc.nextLine();
+            if (!marca.isEmpty()) {
+                v.setMarca(marca); // Solo se actualiza si el input no está vacío
+            }
+
+            System.out.print("Nuevo modelo (deja en blanco para no cambiar): ");
+            String modelo = sc.nextLine();
+            if (!modelo.isEmpty()) {
+                v.setModelo(modelo);
+            }
+
+            System.out.print("Nuevo numero de plazas (0 para no cambiar): ");
+            int plazas = Integer.parseInt(sc.nextLine());
+            if (plazas > 0) {
+                v.setNumPlazas(plazas); // Solo actualiza si es mayor que 0
+            }
+
+            System.out.print("Nuevos extras separados por coma (deja en blanco para no cambiar): ");
+            String extras = sc.nextLine();
+            if (!extras.isEmpty()) {
+                v.setExtras(parsearExtras(extras));
+            }
+
+            // Confirmamos la actualización
+            em.getTransaction().commit();
+            System.out.println("Vehiculo actualizado correctamente.");
+
+        } catch (IllegalArgumentException e) {
+            System.out.println("Error de validacion: " + e.getMessage());
+            em.getTransaction().rollback(); // Revertimos en caso de error de validación
+        } catch (Exception e) {
+            System.out.println("Error al actualizar: " + e.getMessage());
+            em.getTransaction().rollback(); // Revertimos en caso de error de BD
+        }
+    }
+
+    /**
+     * Opcion 5: Elimina un vehículo específico de la base de datos por su
+     * matrícula.
+     *
+     * * @param sc Objeto Scanner para leer la matrícula.
+     * @param em EntityManager para realizar el borrado.
+     */
+    private static void eliminarVehiculo(Scanner sc, EntityManager em) {
+        System.out.print("Introduce la matricula del vehiculo a eliminar: ");
+        String mat = sc.nextLine().toUpperCase();
+
+        // Primero recuperamos el objeto gestionado por el EntityManager
+        Vehiculo v = em.find(Vehiculo.class, mat);
+
+        if (v != null) {
+            em.getTransaction().begin();
+            em.remove(v); // Eliminamos el registro
+            em.getTransaction().commit();
+            System.out.println("Vehiculo eliminado.");
+        } else {
+            System.out.println("No se ha encontrado el vehiculo.");
+        }
+    }
+
+    /**
+     * Opcion 6: Cuenta y muestra el número total de vehículos registrados.
+     *
+     * * @param em EntityManager para realizar la consulta de agregación.
+     */
+    private static void contarVehiculos(EntityManager em) {
+        // Utilizamos la función de agregación COUNT en JPQL
+        Query query = em.createQuery("SELECT COUNT(v) FROM Vehiculo v");
+        // getSingleResult devuelve un único valor, lo casteamos a long
+        long total = (long) query.getSingleResult();
+        System.out.println("Numero total de vehiculos dados de alta: " + total);
+    }
+
+    /**
+     * Opcion 7: Filtra y lista los vehículos que coinciden con una marca
+     * específica.
+     *
+     * * @param sc Objeto Scanner para leer la marca.
+     * @param em EntityManager para realizar la consulta.
+     */
+    private static void listarPorMarca(Scanner sc, EntityManager em) {
+        System.out.print("Introduce la marca a buscar: ");
+        String marca = sc.nextLine();
+
+        TypedQuery<Vehiculo> query = em.createQuery("SELECT v FROM Vehiculo v WHERE v.marca = :paramMarca", Vehiculo.class);
+        query.setParameter("paramMarca", marca); // Inyectamos el valor de búsqueda
+
+        List<Vehiculo> lista = query.getResultList();
+
+        if (lista.isEmpty()) {
+            System.out.println("No hay vehiculos de esa marca.");
+        } else {
+            for (Vehiculo v : lista) {
+                System.out.println(v.toString());
+            }
+        }
+    }
+
+    /**
+     * Opcion 8: Filtra y lista los vehículos por su número de plazas.
+     *
+     * * @param sc Objeto Scanner para leer el número de plazas.
+     * @param em EntityManager para realizar la consulta.
+     */
+    private static void listarPorPlazas(Scanner sc, EntityManager em) {
+        try {
+            System.out.print("Introduce el numero de plazas a buscar: ");
+            int plazas = Integer.parseInt(sc.nextLine());
+
+            TypedQuery<Vehiculo> query = em.createQuery("SELECT v FROM Vehiculo v WHERE v.numPlazas = :paramPlazas", Vehiculo.class);
+            query.setParameter("paramPlazas", plazas);
+
+            List<Vehiculo> lista = query.getResultList();
+
+            if (lista.isEmpty()) {
+                System.out.println("No hay vehiculos con ese numero de plazas.");
+            } else {
+                for (Vehiculo v : lista) {
+                    System.out.println(v.toString());
+                }
+            }
+        } catch (NumberFormatException e) {
+            System.out.println("Error: Debes introducir un numero valido.");
+        }
+    }
+
+    /**
+     * Opcion 9: Filtra y lista los vehículos que contengan un extra específico
+     * en su colección.
+     *
+     * * @param sc Objeto Scanner para leer el extra.
+     * @param em EntityManager para realizar la consulta.
+     */
+    private static void listarPorExtra(Scanner sc, EntityManager em) {
+        System.out.print("Introduce el extra que buscas (ej. navegador): ");
+        String extra = sc.nextLine().trim();
+
+        TypedQuery<Vehiculo> query = em.createQuery("SELECT v FROM Vehiculo v WHERE :paramExtra MEMBER OF v.extras", Vehiculo.class);
+        query.setParameter("paramExtra", extra);
+
+        List<Vehiculo> lista = query.getResultList();
+
+        if (lista.isEmpty()) {
+            System.out.println("No hay vehiculos con ese extra.");
+        } else {
+            for (Vehiculo v : lista) {
+                System.out.println(v.toString());
+            }
+        }
+    }
+
+    /**
+     * Opcion 10: Elimina todos los registros de la entidad Vehiculo tras
+     * confirmar la acción.
+     *
+     * * @param sc Objeto Scanner para leer la confirmación.
+     * @param em EntityManager para ejecutar el borrado masivo.
+     */
+    private static void eliminarTodo(Scanner sc, EntityManager em) {
+        System.out.print("ATENCION: Se borraran todos los datos. Estas seguro? (S/N): ");
+        String confirmacion = sc.nextLine().trim().toUpperCase();
+
+        if (confirmacion.equals("S")) {
+            em.getTransaction().begin();
+            // Ejecutamos una sentencia DELETE masiva
+            Query query = em.createQuery("DELETE FROM Vehiculo v");
+            // executeUpdate devuelve el número de registros afectados
+            int borrados = query.executeUpdate();
+            em.getTransaction().commit();
+
+            System.out.println("Se han eliminado " + borrados + " vehiculos. La base de datos esta limpia.");
+        } else {
+            System.out.println("Operacion cancelada.");
+        }
+    }
+
+    /**
+     * Metodo de utilidad para separar el texto de los extras en un ArrayList.
+     * Convierte una cadena separada por comas en una lista de Strings.
+     *
+     * @param texto String con los extras separados por coma.
+     * @return ArrayList de Strings limpios de espacios en blanco, o lista vacía
+     * si el texto es nulo.
+     */
+    private static ArrayList<String> parsearExtras(String texto) {
+        ArrayList<String> lista = new ArrayList<>();
+
+        // Verificamos que el texto no sea nulo ni esté vacío antes de procesar
+        if (texto != null && !texto.trim().isEmpty()) {
+            // Dividimos el String usando la coma como separador
+            String[] partes = texto.split(",");
+            for (String p : partes) {
+                // Añadimos cada extra eliminando espacios sobrantes al inicio y final
+                lista.add(p.trim());
+            }
+        }
+        return lista;
+    }
+}
