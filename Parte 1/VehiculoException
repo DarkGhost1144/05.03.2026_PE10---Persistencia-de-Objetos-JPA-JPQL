@@ -1,0 +1,14 @@
+/**
+ * Excepción personalizada para controlar los errores de validación de la clase
+ * Vehiculo (como matrícula o número de plazas).
+ *
+ * @author JKur
+ * @version 1.0
+ * @see VehiculoException
+ */
+public class VehiculoException extends Exception {
+
+    public VehiculoException(String mensaje) {
+        super(mensaje);
+    }
+}
