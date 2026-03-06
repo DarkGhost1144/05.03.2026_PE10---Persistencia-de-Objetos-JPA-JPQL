@@ -1,0 +1,45 @@
+/**
+ *
+ * @author Jkur
+ * @version 1.2
+ * @see Exception
+ * @see EmailNoValidoException
+ */
+public class EmailNoValidoException extends Exception {
+
+    public EmailNoValidoException(String message) {
+        super(message);
+    }
+
+}
+
+/**
+ *
+ * @author Jkur
+ * @version 1.2
+ * @see Exception
+ * @see DniNoValidoException
+ */
+public class DniNoValidoException extends Exception {
+
+    public DniNoValidoException(String message) {
+        super(message);
+    }
+
+}
+
+
+/**
+ *
+ * @author Jkur
+ * @version 1.2
+ * @see Exception
+ * @see ClienteExistenteExceptione
+ */
+public class ClienteExistenteException extends Exception {
+
+    public ClienteExistenteException(String mensaje) {
+        super(mensaje);
+    }
+
+}
