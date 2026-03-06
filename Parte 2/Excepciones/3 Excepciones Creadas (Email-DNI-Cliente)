@@ -43,3 +43,19 @@ public class ClienteExistenteException extends Exception {
     }
 
 }
+
+
+/**
+ *
+ * @author Jkur
+ * @version 1.2
+ * @see Exception
+ * @see AlojamientoExistenteException
+ */
+public class AlojamientoExistenteException extends Exception{
+
+    public AlojamientoExistenteException(String message) {
+        super(message);
+    }
+    
+}
