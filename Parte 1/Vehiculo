@@ -1,0 +1,162 @@
+import javax.persistence.Entity;
+import javax.persistence.Id;
+import java.io.Serializable;
+import java.util.ArrayList;
+
+/**
+ * Clase Vehiculo que representa un coche en el sistema. Implementa Serializable
+ * para su persistencia en ObjectDB.
+ *
+ * @author JKur
+ * @version 1.0
+ * @see Entity
+ * @see Serializable
+ * @see ArrayList
+ */
+@Entity
+public class Vehiculo implements Serializable {
+
+    @Id
+    private String matricula; // Clave primaria
+    private String marca;
+    private String modelo;
+    private int numPlazas;
+    private ArrayList<String> extras;
+
+    /**
+     * Constructor por defecto
+     */
+    public Vehiculo() {
+    }
+
+    /**
+     * Constructor con todos los parametros.
+     *
+     * @param matricula La matricula del vehiculo (formato DDDD-LLL).
+     * @param marca La marca del vehiculo.
+     * @param modelo El modelo del vehiculo.
+     * @param numPlazas El numero de plazas (debe ser mayor que 0).
+     * @param extras Lista de extras del vehiculo.
+     */
+    public Vehiculo(String matricula, String marca, String modelo, int numPlazas, ArrayList<String> extras) throws VehiculoException {
+        setMatricula(matricula);
+        this.marca = marca;
+        this.modelo = modelo;
+        setNumPlazas(numPlazas);
+        this.extras = extras;
+    }
+
+    /**
+     * Obtiene la matricula del vehiculo.
+     *
+     * @return matricula
+     */
+    public String getMatricula() {
+        return matricula;
+    }
+
+    /**
+     * Establece y valida la matricula. Debe cumplir el patron DDDD-LLL (4
+     * digitos, un guion, 3 letras).
+     *
+     * * @param matricula La matricula a validar y asignar.
+     * @throws VehiculoException Si el formato es incorrecto.
+     */
+    public void setMatricula(String matricula) throws VehiculoException {
+        if (matricula == null || !matricula.matches("^[0-9]{4}-[a-zA-Z]{3}$")) {
+            throw new VehiculoException("La matricula debe cumplir el patron DDDD-LLL (Ej: 1234-ABC).");
+        }
+        this.matricula = matricula.toUpperCase();
+    }
+
+    /**
+     * Obtiene la marca.
+     *
+     * @return marca
+     */
+    public String getMarca() {
+        return marca;
+    }
+
+    /**
+     * Establece la marca.
+     *
+     * @param marca La marca del vehiculo.
+     */
+    public void setMarca(String marca) {
+        this.marca = marca;
+    }
+
+    /**
+     * Obtiene el modelo.
+     *
+     * @return modelo
+     */
+    public String getModelo() {
+        return modelo;
+    }
+
+    /**
+     * Establece el modelo.
+     *
+     * @param modelo El modelo del vehiculo.
+     */
+    public void setModelo(String modelo) {
+        this.modelo = modelo;
+    }
+
+    /**
+     * Obtiene el numero de plazas.
+     *
+     * @return numero de plazas
+     */
+    public int getNumPlazas() {
+        return numPlazas;
+    }
+
+    /**
+     * Establece y valida el numero de plazas.
+     *
+     * * @param numPlazas El numero de plazas.
+     * @throws VehiculoException Si es menor o igual a 0.
+     */
+    public void setNumPlazas(int numPlazas) throws VehiculoException {
+        if (numPlazas <= 0) {
+            throw new VehiculoException("El numero de plazas debe ser un entero positivo mayor que 0.");
+        }
+        this.numPlazas = numPlazas;
+    }
+
+    /**
+     * Obtiene la lista de extras.
+     *
+     * @return extras
+     */
+    public ArrayList<String> getExtras() {
+        return extras;
+    }
+
+    /**
+     * Establece la lista de extras.
+     *
+     * @param extras La lista de extras.
+     */
+    public void setExtras(ArrayList<String> extras) {
+        this.extras = extras;
+    }
+
+    /**
+     * Metodo toString para mostrar la informacion del vehiculo por pantalla.
+     *
+     * @return String con los datos del vehiculo.
+     */
+    @Override
+    public String toString() {
+        return "Vehiculo :"
+                + "matricula: '" + matricula + '\''
+                + ", marca: '" + marca + '\''
+                + ", modelo: '" + modelo + '\''
+                + ", numPlazas: " + numPlazas
+                + ", extras: " + extras;
+    }
+}
