@@ -1,0 +1,220 @@
+public class AppJavito {
+
+    public static void main(String[] args) {
+        Scanner sc = new Scanner(System.in);
+
+        // Rutas de los ficheros de base de datos
+        String rutaC = "$objectdb/db/clientes.odb";
+        String rutaA = "$objectdb/db/alojamientos.odb";
+
+        // Creamos las factorias y los managers
+        EntityManagerFactory emfC = Persistence.createEntityManagerFactory(rutaC);
+        EntityManagerFactory emfA = Persistence.createEntityManagerFactory(rutaA);
+
+        EntityManager emC = emfC.createEntityManager();
+        EntityManager emA = emfA.createEntityManager();
+
+        int opcion = -1;
+
+        try {
+            while (opcion != 0) {
+                System.out.println("\n--- MENU JAVITO ---");
+                System.out.println("1. Alta (Cliente o Alojamiento)");
+                System.out.println("2. Consultar por ID");
+                System.out.println("3. Listar todo");
+                System.out.println("4. Listar ordenado (Ranking)");
+                System.out.println("5. Modificar objeto");
+                System.out.println("6. Eliminar objeto");
+                System.out.println("7. Borrar todo");
+                System.out.println("0. Salir");
+                System.out.print("Elige: ");
+
+                opcion = Integer.parseInt(sc.nextLine());
+
+                switch (opcion) {
+                    case 1:
+                        System.out.println("1. Cliente | 2. Alojamiento");
+                        int tipoAlta = Integer.parseInt(sc.nextLine());
+                        if (tipoAlta == 1) {
+                            System.out.print("DNI: ");
+                            String dni = sc.nextLine();
+                            System.out.print("Nombre: ");
+                            String nom = sc.nextLine();
+                            System.out.print("Email: ");
+                            String em = sc.nextLine();
+                            System.out.print("Ciudad: ");
+                            String ciu = sc.nextLine();
+
+                            Cliente c = new Cliente(nom, dni, em, ciu);
+                            emC.getTransaction().begin();
+                            emC.persist(c);
+                            emC.getTransaction().commit();
+                            System.out.println("Cliente guardado");
+                        } else {
+                            System.out.print("Nombre: ");
+                            String n = sc.nextLine();
+                            System.out.print("Capacidad: ");
+                            int cap = Integer.parseInt(sc.nextLine());
+                            System.out.print("Precio: ");
+                            double pre = Double.parseDouble(sc.nextLine());
+
+                            Alojamiento a = new Alojamiento(n, cap, pre, true, true);
+                            emA.getTransaction().begin();
+                            emA.persist(a);
+                            emA.getTransaction().commit();
+                            System.out.println("Alojamiento guardado");
+                        }
+                        break;
+
+                    case 2:
+                        System.out.println("1. Buscar Cliente | 2. Buscar Alojamiento");
+                        int tipoBusq = Integer.parseInt(sc.nextLine());
+                        if (tipoBusq == 1) {
+                            System.out.print("DNI: ");
+                            String d = sc.nextLine();
+                            TypedQuery<Cliente> q = emC.createNamedQuery("Cliente.porDni", Cliente.class);
+                            q.setParameter("dni", d);
+                            try {
+                                System.out.println(q.getSingleResult());
+                            } catch (NoResultException e) {
+                                System.out.println("No existe el cliente");
+                            }
+                        } else {
+                            System.out.print("Nombre: ");
+                            String no = sc.nextLine();
+                            TypedQuery<Alojamiento> q = emA.createNamedQuery("Alojamiento.porNombre", Alojamiento.class);
+                            q.setParameter("nom", no);
+                            try {
+                                System.out.println(q.getSingleResult());
+                            } catch (NoResultException e) {
+                                System.out.println("No existe el alojamiento");
+                            }
+                        }
+                        break;
+
+                    case 3:
+                        // Listar todo usando Named Queries
+                        System.out.println("-- Clientes --");
+                        TypedQuery<Cliente> qC = emC.createNamedQuery("Cliente.todos", Cliente.class);
+                        for (Cliente c : qC.getResultList()) {
+                            System.out.println(c);
+                        }
+
+                        System.out.println("-- Alojamientos --");
+                        TypedQuery<Alojamiento> qA = emA.createNamedQuery("Alojamiento.todos", Alojamiento.class);
+                        for (Alojamiento a : qA.getResultList()) {
+                            System.out.println(a);
+                        }
+                        break;
+
+                    case 4:
+                        // Rankings usando Named Queries
+                        System.out.println("-- Ranking Clientes --");
+                        TypedQuery<Cliente> rankC = emC.createNamedQuery("Cliente.ranking", Cliente.class);
+                        for (Cliente c : rankC.getResultList()) {
+                            System.out.println(c);
+                        }
+
+                        System.out.println("-- Ranking Alojamientos --");
+                        TypedQuery<Alojamiento> rankA = emA.createNamedQuery("Alojamiento.ranking", Alojamiento.class);
+                        for (Alojamiento a : rankA.getResultList()) {
+                            System.out.println(a);
+                        }
+                        break;
+
+                    case 5:
+                        System.out.println("1. Modificar Cliente | 2. Modificar Alojamiento");
+                        int tMod = Integer.parseInt(sc.nextLine());
+                        if (tMod == 1) {
+                            System.out.print("DNI: ");
+                            String dMod = sc.nextLine();
+                            TypedQuery<Cliente> q = emC.createNamedQuery("Cliente.porDni", Cliente.class);
+                            q.setParameter("dni", dMod);
+                            try {
+                                Cliente cMod = q.getSingleResult();
+                                System.out.print("Nuevo nombre: ");
+                                emC.getTransaction().begin();
+                                cMod.setNombre(sc.nextLine());
+                                emC.getTransaction().commit();
+                                System.out.println("Modificado");
+                            } catch (NoResultException e) {
+                                System.out.println("No existe");
+                            }
+                        } else {
+                            System.out.print("Nombre: ");
+                            String nMod = sc.nextLine();
+                            TypedQuery<Alojamiento> q = emA.createNamedQuery("Alojamiento.porNombre", Alojamiento.class);
+                            q.setParameter("nom", nMod);
+                            try {
+                                Alojamiento aMod = q.getSingleResult();
+                                System.out.print("Nuevo precio: ");
+                                emA.getTransaction().begin();
+                                aMod.setTarifa(Double.parseDouble(sc.nextLine()));
+                                emA.getTransaction().commit();
+                                System.out.println("Modificado");
+                            } catch (NoResultException e) {
+                                System.out.println("No existe");
+                            }
+                        }
+                        break;
+
+                    case 6:
+                        System.out.println("1. Borrar Cliente | 2. Borrar Alojamiento");
+                        int tBorrar = Integer.parseInt(sc.nextLine());
+                        if (tBorrar == 1) {
+                            System.out.print("DNI: ");
+                            String dBorrar = sc.nextLine();
+                            TypedQuery<Cliente> q = emC.createNamedQuery("Cliente.porDni", Cliente.class);
+                            q.setParameter("dni", dBorrar);
+                            try {
+                                Cliente cBorrar = q.getSingleResult();
+                                emC.getTransaction().begin();
+                                emC.remove(cBorrar); // Borrado fisico
+                                emC.getTransaction().commit();
+                                System.out.println("Eliminado");
+                            } catch (NoResultException e) {
+                                System.out.println("No existe");
+                            }
+                        } else {
+                            System.out.print("Nombre: ");
+                            String nBorrar = sc.nextLine();
+                            TypedQuery<Alojamiento> q = emA.createNamedQuery("Alojamiento.porNombre", Alojamiento.class);
+                            q.setParameter("nom", nBorrar);
+                            try {
+                                Alojamiento aBorrar = q.getSingleResult();
+                                emA.getTransaction().begin();
+                                emA.remove(aBorrar);
+                                emA.getTransaction().commit();
+                                System.out.println("Eliminado");
+                            } catch (NoResultException e) {
+                                System.out.println("No existe");
+                            }
+                        }
+                        break;
+
+                    case 7:
+                        System.out.print("Seguro? (s/n): ");
+                        if (sc.nextLine().equalsIgnoreCase("s")) {
+                            emC.getTransaction().begin();
+                            emC.createQuery("DELETE FROM Cliente").executeUpdate();
+                            emC.getTransaction().commit();
+
+                            emA.getTransaction().begin();
+                            emA.createQuery("DELETE FROM Alojamiento").executeUpdate();
+                            emA.getTransaction().commit();
+                            System.out.println("Bases de datos limpias");
+                        }
+                        break;
+                }
+            }
+        } catch (Exception e) {
+            System.out.println("Error general: " + e.getMessage());
+        } finally {
+            // Cerramos todo
+            emC.close();
+            emA.close();
+            emfC.close();
+            emfA.close();
+        }
+    }
+}
