@@ -1,0 +1,746 @@
+/**
+ * Clase principal del sistema de gestión de alojamientos turísticos "Javito".
+ * Gestiona colecciones de clientes y alojamientos, permitiendo altas, bajas,
+ * listados y operaciones de importación/exportación en formato JSON.
+ *
+ * @author JKur
+ * @version 4.0
+ */
+public class Javito {
+
+    // Arrays para almacenar las entidades
+    /**
+     * Array de alojamientos disponibles en el sistema (máximo 15)
+     */
+    private Alojamiento[] alojamientos;
+
+    /**
+     * Array de clientes registrados en el sistema (máximo 100)
+     */
+    private Cliente[] clientes;
+
+    // Contadores de elementos actuales
+    /**
+     * Número actual de alojamientos registrados
+     */
+    private int numAlojamientos;
+
+    /**
+     * Número actual de clientes registrados
+     */
+    private int numClientes;
+
+    /**
+     * Constructor por defecto de Javito. Inicializa los arrays con capacidad
+     * máxima y los contadores a 0.
+     */
+    public Javito() {
+        alojamientos = new Alojamiento[15];   // Capacidad máxima: 15 alojamientos
+        clientes = new Cliente[100];          // Capacidad máxima: 100 clientes
+        numAlojamientos = 0;                  // Sin alojamientos inicialmente
+        numClientes = 0;                      // Sin clientes inicialmente
+    }
+
+    /**
+     * Registra un nuevo cliente en el sistema. Verifica que hay espacio
+     * disponible y que el cliente no es nulo.
+     *
+     * @param nuevo Cliente a registrar
+     * @return true si se añadió correctamente, false si el array está lleno o
+     * el cliente es nulo
+     */
+    public boolean altaCliente(Cliente nuevo) throws ClienteExistenteException, DniNoValidoException, EmailNoValidoException {
+        // Verifica que hay espacio y que el cliente es válido
+        if (numClientes >= clientes.length || nuevo == null) {
+            return false;  // Array lleno o cliente nulo
+        }
+
+        if (!nuevo.getDni().matches("^[0-9]{8}[A-Za-z]$")) {
+            throw new DniNoValidoException("El DNI no es valido");
+        }
+        if (!nuevo.getEmail().matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+            throw new EmailNoValidoException("El Email no coresponde con la expresion");
+        }
+        for (int i = 0; i < numClientes; i++) {
+            if (clientes[i].getDni().equalsIgnoreCase(nuevo.getDni())) {
+                throw new ClienteExistenteException("El Email no coresponde con la expresion");
+            }
+        }
+
+        clientes[numClientes] = nuevo;  // Añade el cliente al array
+        numClientes++;                   // Incrementa el contador
+        return true;                     // Operación exitosa
+    }
+
+    /**
+     * Elimina un cliente del sistema buscándolo por DNI. Desplaza los elementos
+     * posteriores para mantener el array compacto.
+     *
+     * @param dni DNI del cliente a eliminar
+     * @return true si se eliminó correctamente, false si no se encontró
+     */
+    public boolean bajaCliente(String dni) {
+        int pos = -1;  // Posición del cliente a eliminar
+
+        // Busca el cliente por DNI
+        for (int i = 0; i < numClientes; i++) {
+            if (clientes[i].getDni().equalsIgnoreCase(dni)) {
+                pos = i;  // Cliente encontrado
+                break;
+            }
+        }
+
+        // Si no se encontró el cliente
+        if (pos == -1) {
+            return false;
+        }
+
+        // Desplaza los elementos posteriores una posición hacia la izquierda
+        for (int i = pos; i < numClientes - 1; i++) {
+            clientes[i] = clientes[i + 1];
+        }
+
+        clientes[numClientes - 1] = null;  // Limpia la última posición
+        numClientes--;                      // Decrementa el contador
+        return true;                        // Operación exitosa
+    }
+
+    /**
+     * Muestra un listado de todos los clientes ordenados alfabéticamente por
+     * nombre. Utiliza ordenación burbuja sobre una copia del array.
+     */
+    public void listadoClientes() {
+        System.out.println("--- Listado de Clientes ---");
+
+        // Crea una copia para no alterar el array original
+        Cliente[] copia = Arrays.copyOf(clientes, numClientes);
+
+        // Ordenación burbuja por nombre
+        for (int i = 0; i < copia.length - 1; i++) {
+            for (int j = 0; j < copia.length - 1 - i; j++) {
+                // Compara nombres ignorando mayúsculas
+                if (copia[j].getNombre().compareToIgnoreCase(copia[j + 1].getNombre()) > 0) {
+                    // Intercambia elementos
+                    Cliente aux = copia[j];
+                    copia[j] = copia[j + 1];
+                    copia[j + 1] = aux;
+                }
+            }
+        }
+
+        // Muestra los clientes ordenados
+        for (Cliente c : copia) {
+            System.out.println(c);
+        }
+    }
+
+    /**
+     * Muestra un ranking de clientes ordenados por número de veces alojado
+     * (descendente). Los clientes más fieles aparecen primero.
+     */
+    public void topClientes() {
+        // Crea una copia del array de clientes
+        Cliente[] copia = Arrays.copyOf(clientes, numClientes);
+
+        // Ordenación burbuja por numVecesAlojado (descendente)
+        for (int i = 0; i < copia.length - 1; i++) {
+            for (int j = 0; j < copia.length - 1 - i; j++) {
+                // Compara número de veces alojado
+                if (copia[j].getNumVecesAlojado() < copia[j + 1].getNumVecesAlojado()) {
+                    // Intercambia elementos
+                    Cliente aux = copia[j];
+                    copia[j] = copia[j + 1];
+                    copia[j + 1] = aux;
+                }
+            }
+        }
+
+        // Muestra el ranking
+        for (Cliente c : copia) {
+            System.out.println(c);
+        }
+    }
+
+    /**
+     * Registra un nuevo alojamiento en el sistema. Verifica que hay espacio
+     * disponible y que el alojamiento no es nulo.
+     *
+     * @param nuevo Alojamiento a registrar
+     * @return true si se añadió correctamente, false si el array está lleno o
+     * el alojamiento es nulo
+     */
+    public boolean altaAlojamiento(Alojamiento nuevo) throws AlojamientoExistenteException {
+        // Verifica que hay espacio y que el alojamiento es válido
+        if (numAlojamientos >= alojamientos.length || nuevo == null) {
+            return false;  // Array lleno o alojamiento nulo
+        }
+
+        for (int i = 0; i < numAlojamientos; i++) {
+            if (alojamientos[i].getNombre().equalsIgnoreCase(nuevo.getNombre())) {
+                throw new AlojamientoExistenteException("Ya existe un alojamiento con ese nombre");
+            }
+        }
+
+        alojamientos[numAlojamientos] = nuevo;  // Añade el alojamiento
+        numAlojamientos++;                       // Incrementa el contador
+        return true;                             // Operación exitosa
+    }
+
+    /**
+     * Elimina un alojamiento del sistema buscándolo por nombre. Desplaza los
+     * elementos posteriores para mantener el array compacto.
+     *
+     * @param nombre Nombre del alojamiento a eliminar
+     * @return true si se eliminó correctamente, false si no se encontró
+     */
+    public boolean bajaAlojamiento(String nombre) {
+        int pos = -1;  // Posición del alojamiento a eliminar
+
+        // Busca el alojamiento por nombre
+        for (int i = 0; i < numAlojamientos; i++) {
+            if (alojamientos[i].getNombre().equalsIgnoreCase(nombre)) {
+                pos = i;  // Alojamiento encontrado
+                break;
+            }
+        }
+
+        // Si no se encontró el alojamiento
+        if (pos == -1) {
+            return false;
+        }
+
+        // Desplaza los elementos posteriores
+        for (int i = pos; i < numAlojamientos - 1; i++) {
+            alojamientos[i] = alojamientos[i + 1];
+        }
+
+        alojamientos[numAlojamientos - 1] = null;  // Limpia la última posición
+        numAlojamientos--;                          // Decrementa el contador
+        return true;                                // Operación exitosa
+    }
+
+    /**
+     * Muestra un listado de todos los alojamientos registrados.
+     */
+    public void listadoAlojamientos() {
+        System.out.println("--- Listado de Alojamientos ---");
+
+        // Crea una copia del array
+        Alojamiento[] copia = Arrays.copyOf(alojamientos, numAlojamientos);
+
+        // Muestra todos los alojamientos
+        for (Alojamiento a : copia) {
+            System.out.println(a);
+        }
+    }
+
+    /**
+     * Muestra un ranking de alojamientos. Nota: Actualmente muestra todos sin
+     * ordenar. Implementar ordenación por numAlquilado.
+     */
+    public void topAlojamientos() {
+        // Crea una copia del array
+        Alojamiento[] copia = Arrays.copyOf(alojamientos, numAlojamientos);
+
+        // TODO: Implementar ordenación por veces alquilada (descendente)
+        // Muestra los alojamientos
+        for (Alojamiento a : copia) {
+            System.out.println(a);
+        }
+    }
+
+    /**
+     * Importa clientes desde un archivo JSON llamado "clientes.json". Lee el
+     * archivo, parsea el JSON y crea objetos Cliente que añade al sistema.
+     * Captura y maneja errores de lectura y parseo.
+     */
+    public void importClientesFromJSON() {
+        String filePath = "clientes.json";  // Ruta del archivo JSON
+
+        try {
+            // Lee el contenido completo del archivo
+            String content = new String(Files.readAllBytes(Paths.get(filePath)));
+            System.out.println("\nLeyendo clientes...\n");
+
+            // Parsea el contenido como un array JSON
+            JSONArray jsonArray = new JSONArray(content);
+
+            // Procesa cada objeto JSON del array
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                // Extrae los campos del JSON
+                String nombre = jsonObject.getString("nombre");
+                String dni = jsonObject.getString("dni");
+                String email = jsonObject.getString("email");
+                String lugarResidencia = jsonObject.getString("lugarResidencia");
+                int numVecesAlojado = jsonObject.getInt("numVecesAlojado");
+
+                // Crea el objeto Cliente (el constructor inicializa numVecesAlojado en 0)
+                Cliente cliente = new Cliente(nombre, dni, email, lugarResidencia);
+
+                // Añade el cliente al sistema usando el método de gestión
+                this.altaCliente(cliente);
+            }
+
+            System.out.println("Clientes importados correctamente.");
+
+        } catch (IOException e) {
+            // Error al leer el archivo
+            System.err.println("Error leyendo el fichero: " + e.getMessage());
+        } catch (Exception e) {
+            // Error al procesar el JSON
+            System.err.println("Error procesando el JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta todos los clientes del sistema a un archivo JSON llamado
+     * "clientes.json". Crea un array JSON con todos los clientes y lo escribe
+     * en el archivo con formato legible.
+     */
+    public void exportClientesToJSON() {
+        String filePath = "clientes.json";  // Ruta del archivo de salida
+        JSONArray jsonArray = new JSONArray();  // Array JSON para almacenar clientes
+
+        // Recorre solo los clientes válidos (hasta numClientes)
+        for (int i = 0; i < numClientes; i++) {
+            Cliente c = clientes[i];
+            JSONObject jsonObject = new JSONObject();  // Objeto JSON para cada cliente
+
+            // Añade todos los campos del cliente al JSON
+            jsonObject.put("nombre", c.getNombre());
+            jsonObject.put("dni", c.getDni());
+            jsonObject.put("email", c.getEmail());
+            jsonObject.put("lugarResidencia", c.getLugarResidencia());
+            jsonObject.put("numVecesAlojado", c.getNumVecesAlojado());
+
+            // Añade el objeto al array
+            jsonArray.put(jsonObject);
+        }
+
+        // Intenta escribir el archivo JSON
+        try (FileWriter file = new FileWriter(filePath)) {
+            file.write(jsonArray.toString(4));  // Sangría de 4 espacios para legibilidad
+            System.out.println("Archivo JSON de clientes exportado exitosamente a: " + filePath);
+        } catch (IOException e) {
+            // Error al escribir el archivo
+            System.err.println("Error al escribir el archivo JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Importa alojamientos desde un archivo JSON llamado "alojamientos.json".
+     * Lee el archivo, parsea el JSON y crea objetos Alojamiento que añade al
+     * sistema. Nota: Actualmente no utiliza todos los campos del JSON (mejora
+     * pendiente).
+     */
+    public void importAlojamientosFromJSON() {
+        String filePath = "alojamientos.json";  // Ruta del archivo JSON
+
+        try {
+            // Lee el contenido del archivo
+            String content = new String(Files.readAllBytes(Paths.get(filePath)));
+            System.out.println("\nLeyendo alojamientos...\n");
+
+            // Parsea el contenido como array JSON
+            JSONArray jsonArray = new JSONArray(content);
+
+            // Procesa cada objeto JSON
+            for (int i = 0; i < jsonArray.length(); i++) {
+                JSONObject jsonObject = jsonArray.getJSONObject(i);
+
+                // Extrae los campos del JSON
+                String nombre = jsonObject.getString("nombre");
+                int capacidad = jsonObject.getInt("capacidad");
+                double tarifa = jsonObject.getDouble("tarifa");
+                int tieneChimenea = jsonObject.getInt("tieneChimenea");
+                int tieneJacuzzi = jsonObject.getInt("tieneJacuzzi");
+                int alquiladaAhora = jsonObject.getInt("alquiladaAhora");
+                int numVecesAlquilada = jsonObject.getInt("numVecesAlquilada");
+
+                // Crea el alojamiento (TODO: usar los valores booleanos del JSON)
+                Alojamiento alojamiento = new Alojamiento(nombre, capacidad, tarifa, true, true);
+
+                // Añade al sistema
+                this.altaAlojamiento(alojamiento);
+            }
+
+            System.out.println("Alojamientos importados correctamente.");
+
+        } catch (IOException e) {
+            // Error al leer el archivo
+            System.err.println("Error leyendo el fichero: " + e.getMessage());
+        } catch (Exception e) {
+            // Error al procesar el JSON
+            System.err.println("Error procesando el JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta todos los alojamientos del sistema a un archivo JSON llamado
+     * "alojamientos.json". Crea un array JSON con todos los alojamientos y lo
+     * escribe en el archivo.
+     */
+    public void exportAlojamientoToJSON() {
+        String filePath = "alojamientos.json";  // Ruta del archivo de salida
+        JSONArray jsonArray = new JSONArray();  // Array JSON para almacenar alojamientos
+
+        // Recorre solo los alojamientos válidos
+        for (int i = 0; i < numAlojamientos; i++) {
+            Alojamiento a = alojamientos[i];
+            JSONObject jsonObject = new JSONObject();  // Objeto JSON para cada alojamiento
+
+            // Añade todos los campos del alojamiento
+            jsonObject.put("nombre", a.getNombre());
+            jsonObject.put("capacidad", a.getCapacidad());
+            jsonObject.put("tarifa", a.getTarifa());
+            jsonObject.put("tiene Chimenea", a.isChimenea());
+            jsonObject.put("tiene Jacuzzi", a.isJacuzzi());
+            jsonObject.put("alquilada Ahora", a.isAlquilado());
+            jsonObject.put("num Veces Alquilada", a.getNumAlquilado());
+
+            // Añade el objeto al array
+            jsonArray.put(jsonObject);
+        }
+
+        // Intenta escribir el archivo
+        try (FileWriter file = new FileWriter(filePath)) {
+            file.write(jsonArray.toString(4));  // Formato con sangría
+            System.out.println("Archivo JSON de alojamientos exportado exitosamente a: " + filePath);
+        } catch (IOException e) {
+            // Error al escribir
+            System.err.println("Error al escribir el archivo JSON: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta la lista de clientes a un fichero de texto plano.
+     */
+    public void exportClientesToFicheroTexto(String ruta) {
+        try {
+            // Lo hacemos para escribir el fichero 
+            FileWriter fw = new FileWriter(ruta);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            for (Cliente c : clientes) {
+                // Guardamos los datos separados por ';'
+                bw.write(c.getNombre() + ";" + c.getDni() + ";" + c.getEmail() + ";" + c.getLugarResidencia());
+                bw.newLine(); // Salto de linea
+            }
+
+            System.out.println("Clientes exportados a texto correctamente en: " + ruta);
+
+            bw.close();
+            fw.close();
+
+        } catch (IOException e) {
+            System.err.println("Error al exportar clientes a texto: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta la lista de alojamientos a un fichero de texto plano.
+     */
+    public void exportAlojamientosToFicheroTexto(String ruta) {
+        try {
+            FileWriter fw = new FileWriter(ruta);
+            BufferedWriter bw = new BufferedWriter(fw);
+
+            for (Alojamiento a : alojamientos) {
+                bw.write(a.getNombre() + ";" + a.getCapacidad() + ";" + a.getTarifa() + ";"
+                        + a.isChimenea() + ";" + a.isJacuzzi());
+                bw.newLine();
+            }
+
+            System.out.println("Alojamientos exportados a texto correctamente en: " + ruta);
+
+            bw.close();
+            fw.close();
+
+        } catch (IOException e) {
+            System.err.println("Error al exportar alojamientos a texto: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lee un fichero de texto y anade los clientes al sistema.
+     */
+    public void addClientesFromFicheroTexto(String ruta) throws DniNoValidoException, EmailNoValidoException {
+        try {
+            // Lo hacemos para leer el fichero
+            FileReader fr = new FileReader(ruta);
+            BufferedReader br = new BufferedReader(fr);
+
+            String linea;
+
+            while ((linea = br.readLine()) != null) {
+                String[] datos = linea.split(";");
+                if (datos.length >= 4) {
+                    Cliente c = new Cliente(datos[0], datos[1], datos[2], datos[3]);
+                    try {
+                        this.altaCliente(c);
+                    } catch (Exception e) {
+                        System.out.println("No se pudo importar el cliente " + datos[1] + ": " + e.getMessage());
+                    }
+                }
+            }
+
+            System.out.println("Clientes importados desde texto correctamente.");
+
+            br.close();
+            fr.close();
+
+        } catch (IOException e) {
+            System.err.println("Error al leer el fichero de clientes: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lee un fichero de texto y anade los alojamientos al sistema.
+     */
+    public void addAlojamientosFromFicheroTexto(String ruta) {
+        try {
+            FileReader fr = new FileReader(ruta);
+            BufferedReader br = new BufferedReader(fr);
+
+            String linea;
+            while ((linea = br.readLine()) != null) {
+                String[] datos = linea.split(";");
+                if (datos.length >= 5) {
+                    try {
+                        String nombre = datos[0];
+                        int capacidad = Integer.parseInt(datos[1]);
+                        double tarifa = Double.parseDouble(datos[2]);
+                        boolean chimenea = Boolean.parseBoolean(datos[3]);
+                        boolean jacuzzi = Boolean.parseBoolean(datos[4]);
+
+                        Alojamiento a = new Alojamiento(nombre, capacidad, tarifa, chimenea, jacuzzi);
+                        this.altaAlojamiento(a);
+                    } catch (AlojamientoExistenteException | NumberFormatException e) {
+                        System.out.println("No se pudo importar el alojamiento " + datos[0] + ": " + e.getMessage());
+                    }
+                }
+            }
+
+            System.out.println("Alojamientos importados desde texto correctamente.");
+
+            br.close();
+            fr.close();
+
+        } catch (IOException e) {
+            System.err.println("Error al leer el fichero de alojamientos: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta la lista de clientes a un fichero binario.
+     */
+    public void exportClientesToFicheroBinario(String ruta) {
+        try {
+            FileOutputStream fos = new FileOutputStream(ruta);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+            oos.writeObject(clientes); // Guardamos toda la lista de golpe
+
+            System.out.println("Clientes exportados a binario correctamente en: " + ruta);
+
+            oos.close();
+            fos.close();
+
+        } catch (IOException e) {
+            System.err.println("Error al exportar clientes a binario: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta la lista de alojamientos a un fichero binario.
+     */
+    public void exportAlojamientosToFicheroBinario(String ruta) {
+        try {
+            FileOutputStream fos = new FileOutputStream(ruta);
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+
+            oos.writeObject(alojamientos);
+
+            System.out.println("Alojamientos exportados a binario correctamente en: " + ruta);
+
+            oos.close();
+            fos.close();
+
+        } catch (IOException e) {
+            System.err.println("Error al exportar alojamientos a binario: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lee un fichero binario y anade los clientes leidos a la lista actual.
+     */
+    public void addClientesFromFicheroBinario(String ruta) {
+        try {
+            FileInputStream fis = new FileInputStream(ruta);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            java.util.List<Cliente> clientesLeidos = (java.util.List<Cliente>) ois.readObject();
+
+            for (Cliente c : clientesLeidos) {
+                try {
+                    this.altaCliente(c);
+                } catch (Exception e) {
+                    System.out.println("No se pudo anadir el cliente " + c.getDni() + ": " + e.getMessage());
+                }
+            }
+
+            System.out.println("Clientes importados desde binario correctamente.");
+
+            ois.close();
+            fis.close();
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error al leer binario de clientes: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lee un fichero binario y anade los alojamientos leidos a la lista actual.
+     */
+    public void addAlojamientosFromFicheroBinario(String ruta) {
+        try {
+            FileInputStream fis = new FileInputStream(ruta);
+            ObjectInputStream ois = new ObjectInputStream(fis);
+
+            java.util.List<Alojamiento> alojamientosLeidos = (java.util.List<Alojamiento>) ois.readObject();
+
+            for (Alojamiento a : alojamientosLeidos) {
+                try {
+                    this.altaAlojamiento(a);
+                } catch (AlojamientoExistenteException e) {
+                    System.out.println("No se pudo anadir el alojamiento " + a.getNombre() + ": " + e.getMessage());
+                }
+            }
+
+            System.out.println("Alojamientos importados desde binario correctamente.");
+
+            ois.close();
+            fis.close();
+
+        } catch (IOException | ClassNotFoundException e) {
+            System.err.println("Error al leer binario de alojamientos: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Exporta todos los alojamientos almacenados en el array actual a una
+     * BBDDOO ObjectDB.
+     *
+     * @param nombreBBDD Ruta del archivo (ej: "datos/javito.odb")
+     */
+    public void exportAlojamientosToBBDDOO(String nombreBBDD) {
+        EntityManagerFactory emf = javax.persistence.Persistence.createEntityManagerFactory(nombreBBDD);
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            em.getTransaction().begin();
+            // Recorremos el array hasta el contador actual
+            for (int i = 0; i < numAlojamientos; i++) {
+                // merge actualiza si existe o inserta si es nuevo basado en el @Id (nombre)
+                em.merge(alojamientos[i]);
+            }
+            em.getTransaction().commit();
+            System.out.println("Alojamientos exportados a la base de datos correctamente.");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            System.err.println("Error al exportar alojamientos: " + e.getMessage());
+        } finally {
+            em.close();
+            emf.close();
+        }
+    }
+
+    /**
+     * Importa los alojamientos desde ObjectDB y los añade al sistema.
+     *
+     * @param nombreBBDD Ruta del archivo .odb
+     */
+    public void importAlojamientosFromBBDDOO(String nombreBBDD) {
+        EntityManagerFactory emf = javax.persistence.Persistence.createEntityManagerFactory(nombreBBDD);
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            TypedQuery<Alojamiento> query = em.createQuery("SELECT a FROM Alojamiento a", Alojamiento.class);
+            List<Alojamiento> resultados = query.getResultList();
+
+            for (Alojamiento a : resultados) {
+                try {
+                    this.altaAlojamiento(a);
+                } catch (AlojamientoExistenteException e) {
+                    System.out.println("Alojamiento ya presente en memoria: " + a.getNombre());
+                }
+            }
+            System.out.println("Importacion desde la base de datos finalizada.");
+        } catch (Exception e) {
+            System.err.println("Error al importar alojamientos: " + e.getMessage());
+        } finally {
+            em.close();
+            emf.close();
+        }
+    }
+
+    /**
+     * Exporta los clientes actuales a una BBDDOO ObjectDB.
+     *
+     * @param nombreBBDD Ruta del archivo .odb
+     */
+    public void exportClientesToBBDDOO(String nombreBBDD) {
+        EntityManagerFactory emf = javax.persistence.Persistence.createEntityManagerFactory(nombreBBDD);
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            em.getTransaction().begin();
+            for (int i = 0; i < numClientes; i++) {
+                em.merge(clientes[i]);
+            }
+            em.getTransaction().commit();
+            System.out.println("Clientes exportados a la base de datos correctamente.");
+        } catch (Exception e) {
+            if (em.getTransaction().isActive()) {
+                em.getTransaction().rollback();
+            }
+            System.err.println("Error al exportar clientes: " + e.getMessage());
+        } finally {
+            em.close();
+            emf.close();
+        }
+    }
+
+    /**
+     * Importa los clientes desde ObjectDB al sistema.
+     *
+     * @param nombreBBDD Ruta del archivo .odb
+     */
+    public void importClientesFromBBDDOO(String nombreBBDD) {
+        EntityManagerFactory emf = javax.persistence.Persistence.createEntityManagerFactory(nombreBBDD);
+        EntityManager em = emf.createEntityManager();
+
+        try {
+            javax.persistence.TypedQuery<Cliente> query = em.createQuery("SELECT c FROM Cliente c", Cliente.class);
+            java.util.List<Cliente> resultados = query.getResultList();
+
+            for (Cliente c : resultados) {
+                try {
+                    this.altaCliente(c);
+                } catch (Exception e) {
+                    System.out.println("Cliente omitido (DNI duplicado o inválido): " + c.getDni());
+                }
+            }
+            System.out.println("Importación de clientes desde la base de datos finalizada.");
+        } catch (Exception e) {
+            System.err.println("Error al importar clientes: " + e.getMessage());
+        } finally {
+            em.close();
+            emf.close();
+        }
+    }
+}
